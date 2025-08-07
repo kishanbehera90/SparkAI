@@ -108,7 +108,7 @@ Add any other frontend-specific variables
 
 The project is organized into a monorepo structure with two main directories:
 
-
+```
 ├── client/         # React Frontend
 │   ├── src/
 │   └── ...
@@ -117,6 +117,7 @@ The project is organized into a monorepo structure with two main directories:
 │   ├── routes/
 │   └── index.js
 └── README.md
+```
 
 
 
