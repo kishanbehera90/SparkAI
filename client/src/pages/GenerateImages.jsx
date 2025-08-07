@@ -1,5 +1,10 @@
-import { Image, Sparkles } from 'lucide-react';
+import { Image, Sparkles, Loader2 } from 'lucide-react';
 import React, { useState } from 'react';
+import axios from 'axios';
+import { useAuth } from '@clerk/clerk-react';
+import toast from 'react-hot-toast';
+
+axios.defaults.baseURL = import.meta.env.VITE_BASE_URL;
 
 const GenerateImages = () => {
   const imageStyle = [
@@ -15,11 +20,37 @@ const GenerateImages = () => {
   const [selectedStyle, setSelectedStyle] = useState('Realistic');
   const [input, setInput] = useState('');
   const [publish, setPublish] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [content, setContent] = useState('');
+
+  const { getToken } = useAuth();
 
   const onSubmitHandler = async (e) => {
     e.preventDefault();
-    // Placeholder for image generation API call
-    console.log('Generating image for:', input, 'with style:', selectedStyle, 'public:', publish);
+    try {
+      setLoading(true);
+      setContent(''); // clear previous content
+      const prompt = `Generate an image of ${input} in the style ${selectedStyle}`;
+      const { data } = await axios.post(
+        '/api/ai/generate-image',
+        { prompt, publish },
+        {
+          headers: {
+            Authorization: `Bearer ${await getToken()}`,
+          },
+        }
+      );
+
+      if (data.success) {
+        setContent(data.content);
+      } else {
+        toast.error(data.message || 'Image generation failed');
+      }
+    } catch (error) {
+      toast.error(error?.message || 'Something went wrong');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -39,7 +70,6 @@ const GenerateImages = () => {
           onChange={(e) => setInput(e.target.value)}
           value={input}
           rows={4}
-          type="text"
           className="w-full p-2 px-3 mt-2 outline-none text-sm rounded-md border border-gray-300"
           placeholder="Describe what you want to see in the image..."
           required
@@ -78,13 +108,22 @@ const GenerateImages = () => {
 
         <button
           type="submit"
-          disabled={!input.trim()}
-          className={`w-full flex justify-center items-center gap-2 bg-gradient-to-r from-[#049e0e] to-[#08ea4c] text-white px-4 py-2 mt-6 text-sm rounded-lg cursor-pointer transition-opacity ${
-            !input.trim() ? 'opacity-90 cursor-not-allowed' : ''
+          disabled={!input.trim() || loading}
+          className={`w-full flex justify-center items-center gap-2 bg-gradient-to-r from-[#049e0e] to-[#08ea4c] text-white px-4 py-2 mt-6 text-sm rounded-lg transition-opacity ${
+            !input.trim() || loading ? 'opacity-70 cursor-not-allowed' : ''
           }`}
         >
-          <Image className="w-5" />
-          Generate Image
+          {loading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Generating...
+            </>
+          ) : (
+            <>
+              <Image className="w-5" />
+              Generate Image
+            </>
+          )}
         </button>
       </form>
 
@@ -92,13 +131,23 @@ const GenerateImages = () => {
       <div className="w-full max-w-lg p-4 bg-white rounded-lg flex flex-col border border-gray-200 min-h-96">
         <div className="flex items-center gap-3 mb-4">
           <Image className="w-5 h-5 text-[#00AD25]" />
-          <h1 className="text-xl font-semibold">Generated image</h1>
+          <h1 className="text-xl font-semibold">Generated Image</h1>
         </div>
 
-        <div className="flex-1 flex flex-col justify-center items-center text-sm text-gray-400 gap-5">
-          <Image className="w-9 h-9" />
-          <p>Enter a topic and click "Generate Image" to get started</p>
-        </div>
+        {!content ? (
+          <div className="flex-1 flex flex-col justify-center items-center text-sm text-gray-400 gap-5">
+            <Image className="w-9 h-9" />
+            <p>Enter a prompt and click "Generate Image" to get started</p>
+          </div>
+        ) : (
+          <div className="flex-1 flex justify-center items-center">
+            <img
+              src={content}
+              alt="AI Generated"
+              className="max-w-full max-h-[450px] rounded-md border"
+            />
+          </div>
+        )}
       </div>
     </div>
   );
